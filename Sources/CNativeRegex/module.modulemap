@@ -1,0 +1,5 @@
+module CNativeRegex [system] {
+  header "include/NativeRegex.h"
+  link "pcre2-16"
+  export *
+}

@@ -16,10 +16,12 @@ The build-time generator migrates the complete upstream language catalog into
 lazy per-language resources:
 
 ```console
-node Tools/migrate-highlightjs.cjs \
-  --upstream ../highlightjs-reference \
-  --output Sources/NativeHighlight/Resources/Grammars
+Scripts/generate-grammars.sh ../highlightjs-reference
 ```
+
+Generated grammar JSON is intentionally excluded from Git. A source checkout
+therefore requires generation before `swift build` or `swift test`. Release
+archives contain the generated resources and are ready to build directly.
 
 The optimized engine exports Highlight.js's compiled combined matchers and
 dispatch tables, parses with UTF-16 integer offsets, and materializes public
@@ -51,5 +53,19 @@ That run made the native engine **1.19× faster** overall and used **47% less
 peak memory**. Python, C++, and SQL remain slower individually, so the checked-in
 benchmark should be treated as a reproducible optimization target rather than
 a universal claim about every input.
+
+## Releases
+
+The `Generate release packages` GitHub Actions workflow installs Swift 6.0.3,
+Node.js, and PCRE2 on Ubuntu, regenerates all grammars from pinned Highlight.js
+commit `d9b538d03e571ad631d8c4574a1abda4ca65d62f`, and runs the release test suite.
+
+A manual workflow run uploads build artifacts. Pushing a tag such as `v0.1.0`
+also creates a GitHub Release containing:
+
+- `NativeHighlight-<version>.tar.gz`
+- `NativeHighlight-<version>.zip`
+- `NativeHighlight-Grammars-<version>.tar.gz`
+- `SHA256SUMS`
 
 BSD 3-Clause licensed.

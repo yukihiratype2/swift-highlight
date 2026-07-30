@@ -1,0 +1,71 @@
+name: Generate release packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Package version used in artifact filenames
+        required: true
+        default: dev
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out NativeHighlight
+        uses: actions/checkout@v4
+
+      - name: Check out pinned Highlight.js
+        uses: actions/checkout@v4
+        with:
+          repository: highlightjs/highlight.js
+          ref: d9b538d03e571ad631d8c4574a1abda4ca65d62f
+          path: .build/highlightjs
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: Tools/package-lock.json
+
+      - name: Install Swift
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.0.3"
+
+      - name: Install native dependencies
+        run: sudo apt-get update && sudo apt-get install -y libpcre2-dev zip
+
+      - name: Generate Highlight.js grammars
+        run: Scripts/generate-grammars.sh .build/highlightjs
+
+      - name: Build and test
+        run: swift test -c release
+
+      - name: Package generated sources
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          version="${INPUT_VERSION:-$REF_NAME}"
+          Scripts/package-release.sh "$version"
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: NativeHighlight-${{ github.ref_name }}
+          path: dist/*
+          if-no-files-found: error
+
+      - name: Publish tagged GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --generate-notes

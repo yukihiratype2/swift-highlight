@@ -1,0 +1,8 @@
+.build/
+.swiftpm/
+.verify/
+Tools/node_modules/
+Benchmarks/__pycache__/
+.DS_Store
+Sources/NativeHighlight/Resources/Grammars/
+dist/

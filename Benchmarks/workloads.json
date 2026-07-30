@@ -1,0 +1,10 @@
+[
+ {"name":"Swift declarations","language":"swift","repeat":6,"snippet":"import Foundation\npublic actor UserStore {\n private var users: [UUID: User] = [:]\n public func insert(_ user: User) async throws {\n  guard users[user.id] == nil else { throw StoreError.duplicate }\n  users[user.id] = user\n }\n}"},
+ {"name":"JavaScript async","language":"javascript","repeat":8,"snippet":"export async function loadUsers(client, signal) {\n const response = await client.get('/api/users', { signal });\n return response.items.map(({ id, name }) => ({ id, name: name.trim() }));\n}"},
+ {"name":"Python classes","language":"python","repeat":8,"snippet":"from dataclasses import dataclass\n@dataclass(frozen=True)\nclass User:\n id: str\n name: str\n def greeting(self) -> str:\n  return f\"Hello, {self.name}!\""},
+ {"name":"HTML document","language":"xml","repeat":10,"snippet":"<article class=\"card\" data-user-id=\"42\">\n<header><h2>Native highlighting</h2></header>\n<p aria-label=\"Summary\">Fast &amp; portable output.</p>\n</article>"},
+ {"name":"JSON records","language":"json","repeat":12,"snippet":"{\"id\":42,\"name\":\"Ada Lovelace\",\"active\":true,\"roles\":[\"admin\",\"author\"],\"metadata\":{\"score\":98.5,\"verified\":null}}"},
+ {"name":"C++ templates","language":"cpp","repeat":6,"snippet":"template <typename T>\nclass Repository final {\npublic:\n std::optional<T> find(std::string_view id) const {\n  const auto it = values_.find(id);\n  return it == values_.end() ? std::nullopt : std::optional<T>{it->second};\n }\nprivate:\n std::unordered_map<std::string, T> values_;\n};"},
+ {"name":"SQL query","language":"sql","repeat":12,"snippet":"SELECT u.id, u.name, COUNT(p.id) AS post_count\nFROM users AS u\nLEFT JOIN posts AS p ON p.user_id = u.id\nWHERE u.active = TRUE AND u.created_at >= CURRENT_DATE - INTERVAL '30 days'\nGROUP BY u.id, u.name\nORDER BY post_count DESC;"},
+ {"name":"Bash script","language":"bash","repeat":10,"snippet":"#!/usr/bin/env bash\nset -euo pipefail\nfor source in Sources/**/*.swift; do\n printf 'Checking %s\\n' \"$source\"\n swiftc -typecheck \"$source\"\ndone"}
+]
