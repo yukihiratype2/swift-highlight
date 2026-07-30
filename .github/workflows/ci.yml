@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out HighlightSwift
+        uses: actions/checkout@v4
+
+      - name: Read pinned Highlight.js revision
+        id: highlightjs
+        run: echo "ref=$(tr -d '[:space:]' < HIGHLIGHTJS_COMMIT)" >> "$GITHUB_OUTPUT"
+
+      - name: Check out pinned Highlight.js
+        uses: actions/checkout@v4
+        with:
+          repository: highlightjs/highlight.js
+          ref: ${{ steps.highlightjs.outputs.ref }}
+          path: .build/highlightjs
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: Tools/package-lock.json
+
+      - name: Install Swift
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.0.3"
+
+      - name: Install native dependencies
+        run: sudo apt-get update && sudo apt-get install -y libpcre2-dev
+
+      - name: Generate Highlight.js grammars
+        run: Scripts/generate-grammars.sh .build/highlightjs
+
+      - name: Resolve package
+        run: swift package resolve
+
+      - name: Run tests
+        run: swift test

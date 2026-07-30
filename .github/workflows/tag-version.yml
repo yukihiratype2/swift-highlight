@@ -14,39 +14,76 @@ permissions:
 jobs:
   tag:
     runs-on: ubuntu-24.04
-    outputs:
-      version: ${{ steps.release.outputs.version }}
-      tag: ${{ steps.release.outputs.tag }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Create version tag
-        id: release
+      - name: Read pinned Highlight.js revision
+        id: highlightjs
+        run: echo "ref=$(tr -d '[:space:]' < HIGHLIGHTJS_COMMIT)" >> "$GITHUB_OUTPUT"
+
+      - name: Check out pinned Highlight.js
+        uses: actions/checkout@v4
+        with:
+          repository: highlightjs/highlight.js
+          ref: ${{ steps.highlightjs.outputs.ref }}
+          path: .build/highlightjs
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: Tools/package-lock.json
+
+      - name: Install Swift
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.0.3"
+
+      - name: Install native dependencies
+        run: sudo apt-get update && sudo apt-get install -y libpcre2-dev
+
+      - name: Generate Highlight.js grammars
+        run: Scripts/generate-grammars.sh .build/highlightjs
+
+      - name: Build and test release contents
+        run: swift test -c release
+
+      - name: Create self-contained version tag
+        env:
+          SOURCE_SHA: ${{ github.sha }}
         run: |
           version="$(tr -d '[:space:]' < VERSION)"
           [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]] || {
             echo "Invalid semantic version: $version" >&2
             exit 1
           }
+
           tag="v$version"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
           if git rev-parse "$tag" >/dev/null 2>&1; then
             echo "$tag already exists"
             exit 0
           fi
+
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+
+          # Grammar resources are intentionally ignored on development branches,
+          # but SwiftPM resolves Git tags directly. Create a release-only commit
+          # containing the generated resources and point the version tag at it.
+          git add -f Sources/HighlightSwift/Resources/Grammars
+          git commit -m "release: include generated grammars for $tag"
+
+          test "$(git rev-parse HEAD^)" = "$SOURCE_SHA"
+          test -f Sources/HighlightSwift/Resources/Grammars/catalog.json
+
+          archive="$(mktemp -d)"
+          git archive HEAD | tar -x -C "$archive"
+          test -f "$archive/Sources/HighlightSwift/Resources/Grammars/catalog.json"
+          swift test --package-path "$archive" -c release
+
           git tag -a "$tag" -m "HighlightSwift $tag"
           git push origin "$tag"
-
-  package:
-    needs: tag
-    uses: ./.github/workflows/release.yml
-    with:
-      version: ${{ needs.tag.outputs.version }}
-      release_tag: ${{ needs.tag.outputs.tag }}
-    secrets: inherit
