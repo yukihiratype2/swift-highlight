@@ -1,0 +1,139 @@
+name: Sync Highlight.js
+
+on:
+  schedule:
+    - cron: "17 9 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: sync-highlightjs
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out NativeHighlight
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve latest upstream revision
+        id: upstream
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          current_commit="$(tr -d '[:space:]' < HIGHLIGHTJS_COMMIT)"
+          default_branch="$(gh api repos/highlightjs/highlight.js --jq .default_branch)"
+          latest_commit="$(gh api "repos/highlightjs/highlight.js/commits/$default_branch" --jq .sha)"
+
+          [[ "$current_commit" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "Invalid revision in HIGHLIGHTJS_COMMIT: $current_commit" >&2
+            exit 1
+          }
+          [[ "$latest_commit" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "Invalid upstream revision: $latest_commit" >&2
+            exit 1
+          }
+
+          echo "current=$current_commit" >> "$GITHUB_OUTPUT"
+          echo "latest=$latest_commit" >> "$GITHUB_OUTPUT"
+          echo "short=${latest_commit:0:12}" >> "$GITHUB_OUTPUT"
+
+          if [[ "$current_commit" == "$latest_commit" ]]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "NativeHighlight already uses the latest Highlight.js revision."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Highlight.js advanced from $current_commit to $latest_commit."
+          fi
+
+      - name: Check out latest Highlight.js
+        if: steps.upstream.outputs.changed == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: highlightjs/highlight.js
+          ref: ${{ steps.upstream.outputs.latest }}
+          path: .build/highlightjs
+
+      - name: Install Node.js
+        if: steps.upstream.outputs.changed == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: Tools/package-lock.json
+
+      - name: Install Swift
+        if: steps.upstream.outputs.changed == 'true'
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.0.3"
+
+      - name: Install native dependencies
+        if: steps.upstream.outputs.changed == 'true'
+        run: sudo apt-get update && sudo apt-get install -y libpcre2-dev zip
+
+      - name: Generate grammars
+        if: steps.upstream.outputs.changed == 'true'
+        run: Scripts/generate-grammars.sh .build/highlightjs
+
+      - name: Build and test
+        if: steps.upstream.outputs.changed == 'true'
+        run: swift test -c release
+
+      - name: Package validation artifacts
+        if: steps.upstream.outputs.changed == 'true'
+        env:
+          UPSTREAM_SHORT: ${{ steps.upstream.outputs.short }}
+        run: Scripts/package-release.sh "upstream-$UPSTREAM_SHORT"
+
+      - name: Upload validation artifacts
+        if: steps.upstream.outputs.changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: NativeHighlight-upstream-${{ steps.upstream.outputs.short }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Open upstream update pull request
+        if: steps.upstream.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LATEST_COMMIT: ${{ steps.upstream.outputs.latest }}
+          UPSTREAM_SHORT: ${{ steps.upstream.outputs.short }}
+        run: |
+          branch="automation/highlightjs-$UPSTREAM_SHORT"
+          existing_pr="$(gh pr list             --repo "$GITHUB_REPOSITORY"             --state open             --head "$branch"             --json number             --jq '.[0].number // empty')"
+
+          if [[ -n "$existing_pr" ]]; then
+            echo "Pull request #$existing_pr already tracks this revision."
+            exit 0
+          fi
+
+          git switch -c "$branch"
+          printf '%s\n' "$LATEST_COMMIT" > HIGHLIGHTJS_COMMIT
+          git add HIGHLIGHTJS_COMMIT
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: sync Highlight.js to $UPSTREAM_SHORT"
+          git push --set-upstream origin "$branch"
+
+          body_file="$(mktemp)"
+          {
+            echo "## Summary"
+            echo
+            echo "- Update the pinned Highlight.js revision to \`$LATEST_COMMIT\`."
+            echo "- Regenerate the complete grammar catalog."
+            echo "- Build and run the release test suite."
+            echo "- Package validation artifacts for this workflow run."
+            echo
+            echo "Generated grammar resources remain excluded from Git and are produced during release packaging."
+          } > "$body_file"
+
+          gh pr create             --repo "$GITHUB_REPOSITORY"             --base main             --head "$branch"             --title "chore: sync Highlight.js to $UPSTREAM_SHORT"             --body-file "$body_file"
