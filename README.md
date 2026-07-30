@@ -1,10 +1,33 @@
-# HighlightSwift
+<p align="center">
+  <a href="https://yukihiratype2.github.io/swift-highlight/">
+    <img src="docs/assets/highlightswift-logo.png" width="180" alt="HighlightSwift logo">
+  </a>
+</p>
 
-[![Swift 5.9+](https://img.shields.io/badge/Swift-5.9%2B-F05138?logo=swift&logoColor=white)](https://www.swift.org)
-[![Platforms](https://img.shields.io/badge/platforms-macOS%2013%20%7C%20iOS%2016%20%7C%20tvOS%2016%20%7C%20watchOS%209%20%7C%20Linux-lightgrey)](#requirements)
-[![License: BSD 3-Clause](https://img.shields.io/badge/license-BSD%203--Clause-blue.svg)](LICENSE)
+<h1 align="center">HighlightSwift</h1>
 
-A fast, native Swift syntax highlighter generated from the [Highlight.js](https://highlightjs.org) language grammars. HighlightSwift produces HTML, ANSI-colored text, or structured tokens without executing JavaScript at runtime.
+<p align="center">
+  <strong>Native syntax highlighting, the Swift way.</strong><br>
+  More than 190 languages with HTML, ANSI, and structured token output—without JavaScript at runtime.
+</p>
+
+<p align="center">
+  <a href="https://yukihiratype2.github.io/swift-highlight/">Website</a>
+  ·
+  <a href="#installation">Installation</a>
+  ·
+  <a href="#library-usage">Usage</a>
+  ·
+  <a href="https://github.com/yukihiratype2/swift-highlight/releases">Releases</a>
+</p>
+
+<p align="center">
+  <a href="https://www.swift.org"><img alt="Swift 5.9+" src="https://img.shields.io/badge/Swift-5.9%2B-F05138?logo=swift&logoColor=white"></a>
+  <a href="#requirements"><img alt="Platforms" src="https://img.shields.io/badge/platforms-macOS%2013%20%7C%20iOS%2016%20%7C%20tvOS%2016%20%7C%20watchOS%209%20%7C%20Linux-lightgrey"></a>
+  <a href="LICENSE"><img alt="License: BSD 3-Clause" src="https://img.shields.io/badge/license-BSD%203--Clause-blue.svg"></a>
+</p>
+
+HighlightSwift is a fast, native Swift syntax highlighter generated from the [Highlight.js](https://highlightjs.org) language grammars. It brings a broad, familiar grammar catalog to Swift applications, command-line tools, and servers while keeping highlighting native at runtime.
 
 ## Features
 
