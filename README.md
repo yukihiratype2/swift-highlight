@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://yukihiratype2.github.io/swift-highlight/">
-    <img src="docs/assets/highlightswift-logo.png" width="180" alt="HighlightSwift logo">
+    <img src="docs/assets/highlightswift-logo-rounded.png" width="180" alt="HighlightSwift logo">
   </a>
 </p>
 
