@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - VERSION
+      - RELEASE_REQUEST
 
 permissions:
   contents: write
@@ -13,6 +14,9 @@ permissions:
 jobs:
   tag:
     runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      tag: ${{ steps.release.outputs.tag }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -20,6 +24,7 @@ jobs:
           fetch-depth: 0
 
       - name: Create version tag
+        id: release
         run: |
           version="$(tr -d '[:space:]' < VERSION)"
           [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]] || {
@@ -27,6 +32,8 @@ jobs:
             exit 1
           }
           tag="v$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
           if git rev-parse "$tag" >/dev/null 2>&1; then
             echo "$tag already exists"
             exit 0
@@ -35,3 +42,11 @@ jobs:
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git tag -a "$tag" -m "NativeHighlight $tag"
           git push origin "$tag"
+
+  package:
+    needs: tag
+    uses: ./.github/workflows/release.yml
+    with:
+      version: ${{ needs.tag.outputs.version }}
+      release_tag: ${{ needs.tag.outputs.tag }}
+    secrets: inherit

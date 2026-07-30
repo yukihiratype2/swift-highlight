@@ -70,5 +70,7 @@ also creates a GitHub Release containing:
 
 For regular releases, update `VERSION` on `main`. The `Tag version` workflow
 creates the matching `v<version>` tag, which triggers release packaging.
+If a tag already exists and its release assets need rebuilding, update
+`RELEASE_REQUEST` to the desired version.
 
 BSD 3-Clause licensed.
