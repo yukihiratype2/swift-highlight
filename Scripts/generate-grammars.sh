@@ -3,7 +3,7 @@ set -euo pipefail
 
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 upstream_path="${1:-"$project_root/.build/highlightjs"}"
-output_path="$project_root/Sources/NativeHighlight/Resources/Grammars"
+output_path="$project_root/Sources/HighlightSwift/Resources/Grammars"
 
 npm ci --prefix "$project_root/Tools"
 npm ci --prefix "$upstream_path"

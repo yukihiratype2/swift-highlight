@@ -1,5 +1,5 @@
-#if canImport(NativeHighlight)
-import NativeHighlight
+#if canImport(HighlightSwift)
+import HighlightSwift
 #endif
 import Foundation
 #if canImport(Glibc)
@@ -18,7 +18,7 @@ func peakRSS() -> Int {
     return 0
     #endif
 }
-let grammarURL=URL(fileURLWithPath:"Sources/NativeHighlight/Resources/Grammars")
+let grammarURL=URL(fileURLWithPath:"Sources/HighlightSwift/Resources/Grammars")
 let raw=try JSONSerialization.jsonObject(
     with:Data(contentsOf:URL(fileURLWithPath:"Benchmarks/workloads.json"))
 ) as! [[String:Any]]

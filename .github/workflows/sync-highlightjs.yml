@@ -17,7 +17,7 @@ jobs:
   sync:
     runs-on: ubuntu-24.04
     steps:
-      - name: Check out NativeHighlight
+      - name: Check out HighlightSwift
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -46,7 +46,7 @@ jobs:
 
           if [[ "$current_commit" == "$latest_commit" ]]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "NativeHighlight already uses the latest Highlight.js revision."
+            echo "HighlightSwift already uses the latest Highlight.js revision."
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
             echo "Highlight.js advanced from $current_commit to $latest_commit."
@@ -96,7 +96,7 @@ jobs:
         if: steps.upstream.outputs.changed == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: NativeHighlight-upstream-${{ steps.upstream.outputs.short }}
+          name: HighlightSwift-upstream-${{ steps.upstream.outputs.short }}
           path: dist/*
           if-no-files-found: error
           retention-days: 30

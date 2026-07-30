@@ -1,5 +1,5 @@
 import Foundation
-import NativeHighlight
+import HighlightSwift
 
 var language: String?, format="ansi", file: String?
 var args=CommandLine.arguments.dropFirst().makeIterator()

@@ -1,7 +1,7 @@
 import XCTest
-@testable import NativeHighlight
+@testable import HighlightSwift
 
-final class NativeHighlightTests:XCTestCase {
+final class HighlightSwiftTests:XCTestCase {
     func testCatalogAndCoverage() throws {
         let catalog=try GeneratedGrammarCatalog()
         XCTAssertGreaterThanOrEqual(catalog.languages.count,192)

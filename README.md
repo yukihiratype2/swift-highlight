@@ -1,10 +1,10 @@
-# NativeHighlight
+# HighlightSwift
 
 [![Swift 5.9+](https://img.shields.io/badge/Swift-5.9%2B-F05138?logo=swift&logoColor=white)](https://www.swift.org)
 [![Platforms](https://img.shields.io/badge/platforms-macOS%2013%20%7C%20iOS%2016%20%7C%20tvOS%2016%20%7C%20watchOS%209%20%7C%20Linux-lightgrey)](#requirements)
 [![License: BSD 3-Clause](https://img.shields.io/badge/license-BSD%203--Clause-blue.svg)](LICENSE)
 
-A fast, native Swift syntax highlighter generated from the [Highlight.js](https://highlightjs.org) language grammars. NativeHighlight produces HTML, ANSI-colored text, or structured tokens without executing JavaScript at runtime.
+A fast, native Swift syntax highlighter generated from the [Highlight.js](https://highlightjs.org) language grammars. HighlightSwift produces HTML, ANSI-colored text, or structured tokens without executing JavaScript at runtime.
 
 ## Features
 
@@ -34,7 +34,7 @@ sudo apt-get install libpcre2-dev
 
 ### Swift Package Manager
 
-Add NativeHighlight to your package dependencies:
+Add HighlightSwift to your package dependencies:
 
 ```swift
 dependencies: [
@@ -51,7 +51,7 @@ Then add the library to your target:
 .target(
     name: "YourTarget",
     dependencies: [
-        .product(name: "NativeHighlight", package: "swift-highlight")
+        .product(name: "HighlightSwift", package: "swift-highlight")
     ]
 )
 ```
@@ -63,7 +63,7 @@ Release archives include the generated grammar resources and are ready to build.
 Import the package and create a highlighter containing the full language catalog:
 
 ```swift
-import NativeHighlight
+import HighlightSwift
 
 let highlighter = try Highlighter.allLanguages()
 let source = """
@@ -117,25 +117,25 @@ Each `HighlightToken` contains a `TokenKind`, its original text, and its range i
 Build the CLI:
 
 ```console
-swift build -c release --product native-highlight
+swift build -c release --product highlight-swift
 ```
 
 Highlight a file in the terminal:
 
 ```console
-.build/release/native-highlight --language swift Example.swift
+.build/release/highlight-swift --language swift Example.swift
 ```
 
 Read from standard input and emit HTML:
 
 ```console
-printf 'let answer = 42' | .build/release/native-highlight --language swift --format html
+printf 'let answer = 42' | .build/release/highlight-swift --language swift --format html
 ```
 
-Let NativeHighlight detect the language and print tokens:
+Let HighlightSwift detect the language and print tokens:
 
 ```console
-.build/release/native-highlight --format tokens Example.swift
+.build/release/highlight-swift --format tokens Example.swift
 ```
 
 Available output formats are `ansi` (the default), `html`, and `tokens`.
@@ -156,28 +156,28 @@ The generator requires Node.js. On Linux, install PCRE2 before building.
 
 ## Performance
 
-The included benchmark compares final HTML rendering in NativeHighlight and Highlight.js. It runs three warmups and 25 measured iterations per workload, then reports the median of five fresh processes.
+The included benchmark compares final HTML rendering in HighlightSwift and Highlight.js. It runs three warmups and 25 measured iterations per workload, then reports the median of five fresh processes.
 
 On the project cloud runner using Swift 6.0.3, Node.js 24.14.0, Highlight.js 11.11.2, and the eight checked-in workloads:
 
 | Runtime | Throughput | Peak RSS |
 | --- | ---: | ---: |
-| NativeHighlight | 6.82 MB/s | 48.52 MB |
+| HighlightSwift | 6.82 MB/s | 48.52 MB |
 | Highlight.js / Node.js | 2.50 MB/s | 90.87 MB |
 
-In that run, NativeHighlight was **2.72× faster** overall and used **47% less peak memory**. Results vary by platform and input; treat the checked-in benchmark as a reproducible optimization target rather than a universal performance claim.
+In that run, HighlightSwift was **2.72× faster** overall and used **47% less peak memory**. Results vary by platform and input; treat the checked-in benchmark as a reproducible optimization target rather than a universal performance claim.
 
 Run it locally with:
 
 ```console
-swift build -c release --product native-highlight-benchmark
-cp .build/release/native-highlight-benchmark .verify/native-highlight-benchmark
+swift build -c release --product highlight-swift-benchmark
+cp .build/release/highlight-swift-benchmark .verify/highlight-swift-benchmark
 python3 Benchmarks/compare.py
 ```
 
 ## How it works
 
-At build time, NativeHighlight converts Highlight.js grammar definitions into lazy, per-language resources. At runtime, the engine executes compiled combined matchers and dispatch tables using UTF-16 integer offsets, then materializes Swift token strings once at the end.
+At build time, HighlightSwift converts Highlight.js grammar definitions into lazy, per-language resources. At runtime, the engine executes compiled combined matchers and dispatch tables using UTF-16 integer offsets, then materializes Swift token strings once at the end.
 
 Linux uses PCRE2-16 JIT through a small C interoperability target. Apple platforms use the Foundation regular-expression fallback. Match buffers are reused per thread, so concurrent highlighting does not serialize on a shared regular-expression lock.
 
@@ -191,7 +191,7 @@ The **Sync Highlight.js** workflow runs every Monday and can also be started man
 4. Uploads validation packages as GitHub Actions artifacts.
 5. Opens a pull request that updates the pinned revision.
 
-Merging that pull request makes subsequent NativeHighlight releases use the validated upstream revision. The pin keeps builds reproducible while still making upstream updates automatic.
+Merging that pull request makes subsequent HighlightSwift releases use the validated upstream revision. The pin keeps builds reproducible while still making upstream updates automatic.
 
 ## Releases
 
@@ -199,9 +199,9 @@ The release workflow regenerates all grammars from the revision in `HIGHLIGHTJS_
 
 Tagged releases contain:
 
-- `NativeHighlight-<version>.tar.gz`
-- `NativeHighlight-<version>.zip`
-- `NativeHighlight-Grammars-<version>.tar.gz`
+- `HighlightSwift-<version>.tar.gz`
+- `HighlightSwift-<version>.zip`
+- `HighlightSwift-Grammars-<version>.tar.gz`
 - `SHA256SUMS`
 
 Maintainers can update `VERSION` on `main` to create the corresponding `v<version>` tag through the **Tag version** workflow. To rebuild assets for an existing tag, update `RELEASE_REQUEST` with a new retry marker.
@@ -219,4 +219,4 @@ Please include a focused test for behavior changes when practical.
 
 ## License
 
-NativeHighlight is available under the [BSD 3-Clause License](LICENSE).
+HighlightSwift is available under the [BSD 3-Clause License](LICENSE).

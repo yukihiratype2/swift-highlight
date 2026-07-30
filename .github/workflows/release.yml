@@ -28,7 +28,7 @@ jobs:
   package:
     runs-on: ubuntu-24.04
     steps:
-      - name: Check out NativeHighlight
+      - name: Check out HighlightSwift
         uses: actions/checkout@v4
 
       - name: Read pinned Highlight.js revision
@@ -74,7 +74,7 @@ jobs:
       - name: Upload workflow artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: NativeHighlight-${{ github.ref_name }}
+          name: HighlightSwift-${{ github.ref_name }}
           path: dist/*
           if-no-files-found: error
 

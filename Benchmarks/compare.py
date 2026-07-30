@@ -2,7 +2,7 @@
 import json,statistics,subprocess
 def trials(cmd):
     return [json.loads(subprocess.check_output(cmd,text=True)) for _ in range(5)]
-s=trials([".verify/native-highlight-benchmark"])
+s=trials([".verify/highlight-swift-benchmark"])
 n=trials(["node","Benchmarks/highlightjs.cjs"])
 sr=statistics.median(x["total_mb_per_second"] for x in s)
 nr=statistics.median(x["total_mb_per_second"] for x in n)

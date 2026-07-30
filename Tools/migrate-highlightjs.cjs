@@ -8,7 +8,7 @@ function value(flag, fallback) {
 }
 const upstream = path.resolve(value("--upstream", ""));
 const output = path.resolve(value(
-  "--output", path.join(__dirname, "..", "Sources", "NativeHighlight", "Resources", "Grammars")
+  "--output", path.join(__dirname, "..", "Sources", "HighlightSwift", "Resources", "Grammars")
 ));
 if (!fs.existsSync(path.join(upstream, "src", "highlight.js"))) {
   throw new Error("Use --upstream PATH to a Highlight.js source checkout");
@@ -80,7 +80,7 @@ const pkg = JSON.parse(fs.readFileSync(path.join(upstream, "package.json")));
 const upstreamInfo = {name:pkg.name,version:pkg.version,repository:pkg.repository};
 fs.mkdirSync(output,{recursive:true});
 fs.writeFileSync(path.join(output,"catalog.json"), JSON.stringify({
-  schemaVersion:1,generator:"NativeHighlight/Tools/migrate-highlightjs.cjs",
+  schemaVersion:1,generator:"HighlightSwift/Tools/migrate-highlightjs.cjs",
   upstream:upstreamInfo,languages:languages.map(({id,aliases,disableAutodetect})=>({
     id,aliases,disableAutodetect
   }))
