@@ -67,9 +67,14 @@ public final class GeneratedGrammarCatalog: @unchecked Sendable {
     }
 
     public convenience init() throws {
-        guard let url = Bundle.module.url(
+        let nested = Bundle.module.url(
             forResource: "catalog", withExtension: "json", subdirectory: "Grammars"
-        )?.deletingLastPathComponent() else { throw GeneratedGrammarError.missingResource }
+        )
+        let flattened = Bundle.module.url(
+            forResource: "catalog", withExtension: "json"
+        )
+        guard let url = (nested ?? flattened)?.deletingLastPathComponent()
+        else { throw GeneratedGrammarError.missingResource }
         try self.init(directoryURL: url)
     }
 
