@@ -10,11 +10,14 @@ let package = Package(
         .executable(name: "native-highlight-benchmark", targets: ["NativeHighlightBenchmark"])
     ],
     targets: [
-        .systemLibrary(
+        .target(
             name: "CNativeRegex",
             path: "Sources/CNativeRegex",
-            pkgConfig: "libpcre2-16",
-            providers: [.apt(["libpcre2-dev"]), .brew(["pcre2"])]
+            publicHeadersPath: "include",
+            linkerSettings: [
+                .linkedLibrary("pcre2-16"),
+                .linkedLibrary("pthread")
+            ]
         ),
         .target(
             name: "NativeHighlight",
