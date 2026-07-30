@@ -46,13 +46,13 @@ eight checked-in workloads:
 
 | Runtime | Throughput | Peak RSS |
 |---|---:|---:|
-| NativeHighlight | 3.18 MB/s | 48.55 MB |
-| Highlight.js / Node.js | 2.67 MB/s | 91.03 MB |
+| NativeHighlight | 6.53 MB/s | 48.49 MB |
+| Highlight.js / Node.js | 2.59 MB/s | 91.48 MB |
 
-That run made the native engine **1.19× faster** overall and used **47% less
-peak memory**. Python, C++, and SQL remain slower individually, so the checked-in
-benchmark should be treated as a reproducible optimization target rather than
-a universal claim about every input.
+That run made the native engine **2.52× faster** overall and used **47% less
+peak memory**. SQL remains slower individually, so the checked-in benchmark
+should be treated as a reproducible optimization target rather than a universal
+claim about every input.
 
 ## Releases
 

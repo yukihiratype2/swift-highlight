@@ -28,4 +28,21 @@ final class NativeHighlightTests:XCTestCase {
             r.html
         )
     }
+    func testASCIIKeywordFastPathAndScopeNormalization() throws {
+        let highlighter = try Highlighter.allLanguages()
+        XCTAssertEqual(
+            try highlighter.highlightHTML(
+                "if return true false", language: "swift"
+            ),
+            "<span class=\"hljs-keyword\">if</span> "
+                + "<span class=\"hljs-keyword\">return</span> "
+                + "<span class=\"hljs-literal\">true</span> "
+                + "<span class=\"hljs-literal\">false</span>"
+        )
+        XCTAssertTrue(
+            try highlighter.highlightHTML(
+                "class User {}", language: "swift"
+            ).contains("class=\"hljs-title-class\"")
+        )
+    }
 }

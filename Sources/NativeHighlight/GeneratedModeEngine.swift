@@ -298,17 +298,23 @@ private struct GeneratedParser {
     let utf16: [UInt16]
     let length: Int
     let caseInsensitive: Bool
+    let isASCII: Bool
     private var pending: [PendingToken] = []
     private var keywordHits: [String:Int] = [:]
+    private var kindCache: [String:TokenKind] = [:]
     var relevance = 0
 
     init(source: String, caseInsensitive: Bool) {
+        let units = Array(source.utf16)
+        let utf8Count = source.utf8.count
         self.source = source
         nsSource = source as NSString
-        utf16 = Array(source.utf16)
-        length = utf16.count
+        utf16 = units
+        length = units.count
         self.caseInsensitive = caseInsensitive
-        pending.reserveCapacity(max(16, source.utf8.count / 12))
+        isASCII = utf8Count == units.count
+        pending.reserveCapacity(max(16, utf8Count / 12))
+        kindCache.reserveCapacity(32)
     }
 
     mutating func parseRoot(_ mode: GeneratedMode) {
@@ -553,6 +559,10 @@ private struct GeneratedParser {
     ) {
         guard range.length > 0 else { return }
         guard !keywords.isEmpty else { append(scope: scope, range: range); return }
+        if isASCII {
+            emitASCIIKeywords(range, scope: scope, keywords: keywords)
+            return
+        }
         var cursor = range.location
         for match in Self.keywordRegex.matches(in: source, range: range) {
             let original = nsSource.substring(with: match.range)
@@ -576,6 +586,81 @@ private struct GeneratedParser {
         if cursor < NSMaxRange(range) {
             append(scope: scope, range: NSRange(location: cursor, length:NSMaxRange(range)-cursor))
         }
+    }
+
+    private mutating func emitASCIIKeywords(
+        _ range: NSRange, scope: String?, keywords: [String:GeneratedKeyword]
+    ) {
+        let limit = NSMaxRange(range)
+        var cursor = range.location
+        var search = cursor
+        while search < limit {
+            let first = utf16[search]
+            guard isASCIIKeywordStart(first) else {
+                search += 1
+                continue
+            }
+            let previousIsWord = search > range.location
+                && isASCIIWord(utf16[search - 1])
+            guard previousIsWord != isASCIIWord(first) else {
+                search += 1
+                continue
+            }
+            var end = search + 1
+            while end < limit, isASCIIKeywordContinuation(utf16[end]) {
+                end += 1
+            }
+            // `$` is accepted by the keyword pattern but not by `\b`.
+            // Let the match end at the preceding ASCII word character.
+            while end > search, !isASCIIWord(utf16[end - 1]) {
+                end -= 1
+            }
+            guard end > search else {
+                search += 1
+                continue
+            }
+            let original = String(decoding: utf16[search..<end], as: UTF16.self)
+            let lookup = caseInsensitive ? original.lowercased() : original
+            guard let keyword = keywords[lookup] else {
+                search = max(search + 1, end)
+                continue
+            }
+            if search > cursor {
+                append(
+                    scope: scope,
+                    range: NSRange(location: cursor, length: search - cursor)
+                )
+            }
+            let count = keywordHits[lookup, default: 0] + 1
+            keywordHits[lookup] = count
+            if count <= 7 { relevance += keyword.relevance }
+            append(
+                scope: keyword.scope.hasPrefix("_") ? scope : keyword.scope,
+                range: NSRange(location: search, length: end - search)
+            )
+            cursor = end
+            search = end
+        }
+        if cursor < limit {
+            append(
+                scope: scope,
+                range: NSRange(location: cursor, length: limit - cursor)
+            )
+        }
+    }
+
+    private func isASCIIKeywordStart(_ unit: UInt16) -> Bool {
+        (65...90).contains(unit) || (97...122).contains(unit)
+            || unit == 95 || unit == 36
+    }
+
+    private func isASCIIKeywordContinuation(_ unit: UInt16) -> Bool {
+        isASCIIKeywordStart(unit) || (48...57).contains(unit)
+    }
+
+    private func isASCIIWord(_ unit: UInt16) -> Bool {
+        (65...90).contains(unit) || (97...122).contains(unit)
+            || (48...57).contains(unit) || unit == 95
     }
 
     private mutating func emitCaptures(
@@ -604,9 +689,20 @@ private struct GeneratedParser {
 
     private mutating func append(scope: String?, range: NSRange) {
         guard range.length > 0 else { return }
-        let kind = scope.map {
-            TokenKind(rawValue: $0.replacingOccurrences(of: ".", with: "-"))
-        } ?? .plain
+        let kind: TokenKind
+        if let scope {
+            if let cached = kindCache[scope] {
+                kind = cached
+            } else {
+                let value = TokenKind(
+                    rawValue: scope.replacingOccurrences(of: ".", with: "-")
+                )
+                kindCache[scope] = value
+                kind = value
+            }
+        } else {
+            kind = .plain
+        }
         if !pending.isEmpty, pending[pending.count-1].kind == kind,
            NSMaxRange(pending[pending.count-1].range) == range.location {
             pending[pending.count-1].range.length += range.length
