@@ -83,7 +83,7 @@ jobs:
           archive="$(mktemp -d)"
           git archive HEAD | tar -x -C "$archive"
           test -f "$archive/Sources/HighlightSwift/Resources/Grammars/catalog.json"
-          swift package --package-path "$archive" dump-package >/dev/null
+          swift test --package-path "$archive" -c release
 
           git tag -a "$tag" -m "HighlightSwift $tag"
           git push origin "$tag"
