@@ -146,7 +146,8 @@ Generated grammar JSON is intentionally excluded from Git. To build a source che
 
 ```console
 git clone https://github.com/highlightjs/highlight.js.git .build/highlightjs
-git -C .build/highlightjs checkout d9b538d03e571ad631d8c4574a1abda4ca65d62f
+highlightjs_ref="$(tr -d '[:space:]' < HIGHLIGHTJS_COMMIT)"
+git -C .build/highlightjs checkout "$highlightjs_ref"
 Scripts/generate-grammars.sh .build/highlightjs
 swift test
 ```
@@ -180,9 +181,21 @@ At build time, NativeHighlight converts Highlight.js grammar definitions into la
 
 Linux uses PCRE2-16 JIT through a small C interoperability target. Apple platforms use the Foundation regular-expression fallback. Match buffers are reused per thread, so concurrent highlighting does not serialize on a shared regular-expression lock.
 
+## Upstream synchronization
+
+The **Sync Highlight.js** workflow runs every Monday and can also be started manually. It compares `HIGHLIGHTJS_COMMIT` with the latest commit on Highlight.js's default branch. When an update is available, the workflow:
+
+1. Checks out the new upstream revision.
+2. Regenerates the full grammar catalog.
+3. Runs the release test suite.
+4. Uploads validation packages as GitHub Actions artifacts.
+5. Opens a pull request that updates the pinned revision.
+
+Merging that pull request makes subsequent NativeHighlight releases use the validated upstream revision. The pin keeps builds reproducible while still making upstream updates automatic.
+
 ## Releases
 
-The release workflow regenerates all grammars from the pinned Highlight.js commit, runs the release test suite, and packages generated sources.
+The release workflow regenerates all grammars from the revision in `HIGHLIGHTJS_COMMIT`, runs the release test suite, and packages generated sources.
 
 Tagged releases contain:
 
