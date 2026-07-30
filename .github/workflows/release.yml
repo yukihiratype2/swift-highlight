@@ -31,11 +31,15 @@ jobs:
       - name: Check out NativeHighlight
         uses: actions/checkout@v4
 
+      - name: Read pinned Highlight.js revision
+        id: highlightjs
+        run: echo "ref=$(tr -d '[:space:]' < HIGHLIGHTJS_COMMIT)" >> "$GITHUB_OUTPUT"
+
       - name: Check out pinned Highlight.js
         uses: actions/checkout@v4
         with:
           repository: highlightjs/highlight.js
-          ref: d9b538d03e571ad631d8c4574a1abda4ca65d62f
+          ref: ${{ steps.highlightjs.outputs.ref }}
           path: .build/highlightjs
 
       - name: Install Node.js
