@@ -1,13 +1,13 @@
 import Foundation
 
 private struct GeneratedKeyword: Sendable {
-    let scope: String
+    let kind: TokenKind?
     let relevance: Int
 }
 
 private final class GeneratedMode: @unchecked Sendable {
     let id: Int
-    var scope: String?
+    var kind: TokenKind?
     var begin: NSRegularExpression?
     var end: NSRegularExpression?
     var illegal: NSRegularExpression?
@@ -20,8 +20,8 @@ private final class GeneratedMode: @unchecked Sendable {
     var contains: [GeneratedMode] = []
     var starts: GeneratedMode?
     var keywords: [String: GeneratedKeyword] = [:]
-    var beginScope: [Int: String] = [:]
-    var endScope: [Int: String] = [:]
+    var beginScope: [Int: TokenKind] = [:]
+    var endScope: [Int: TokenKind] = [:]
     var relevance = 1
     var excludeBegin = false
     var excludeEnd = false
@@ -37,11 +37,13 @@ private final class GeneratedCompiler {
     let language: GeneratedLanguage
     let caseInsensitive: Bool
     private var modes: [Int: GeneratedMode] = [:]
+    private var tokenKinds: [String: TokenKind] = [:]
 
     init(language: GeneratedLanguage) {
         self.language = language
         caseInsensitive = language.graph.nodes[language.graph.root]
             .values.object?["case_insensitive"]?.bool ?? false
+        tokenKinds.reserveCapacity(32)
     }
 
     func compile() throws -> GeneratedMode { try mode(language.graph.root) }
@@ -54,7 +56,7 @@ private final class GeneratedCompiler {
         }
         let x = GeneratedMode(id: id)
         modes[id] = x
-        x.scope = o["scope"]?.string ?? o["className"]?.string
+        x.kind = tokenKind(o["scope"]?.string ?? o["className"]?.string)
         x.relevance = o["relevance"]?.int ?? 1
         x.excludeBegin = o["excludeBegin"]?.bool ?? false
         x.excludeEnd = o["excludeEnd"]?.bool ?? false
@@ -122,13 +124,13 @@ private final class GeneratedCompiler {
               case .array(let a) = language.graph.nodes[id].values else { return nil }
         return a
     }
-    private func scopeMap(_ value: JSONValue?) -> [Int: String] {
-        if let s = value?.string { return [0:s] }
+    private func scopeMap(_ value: JSONValue?) -> [Int: TokenKind] {
+        if let kind = tokenKind(value?.string) { return [0:kind] }
         guard let id = reference(value), language.graph.nodes.indices.contains(id),
               let o = language.graph.nodes[id].values.object else { return [:] }
         return Dictionary(uniqueKeysWithValues: o.compactMap {
             guard let i = Int($0.key), let s = $0.value.string else { return nil }
-            return (i,s)
+            return (i,tokenKind(s))
         })
     }
     private func keywordMap(_ value: JSONValue?) -> [String: GeneratedKeyword] {
@@ -139,10 +141,24 @@ private final class GeneratedCompiler {
             guard let a = referencedArray(entry), a.count >= 2,
                   let scope = a[0].string, let relevance = a[1].int else { continue }
             result[caseInsensitive ? word.lowercased() : word] = .init(
-                scope: scope, relevance: relevance
+                kind: scope.hasPrefix("_") ? nil : tokenKind(scope),
+                relevance: relevance
             )
         }
         return result
+    }
+
+    private func tokenKind(_ scope: String) -> TokenKind {
+        if let kind = tokenKinds[scope] { return kind }
+        let kind = TokenKind(
+            rawValue: scope.replacingOccurrences(of: ".", with: "-")
+        )
+        tokenKinds[scope] = kind
+        return kind
+    }
+
+    private func tokenKind(_ scope: String?) -> TokenKind? {
+        scope.map(tokenKind)
     }
 
     private func pattern(_ value: JSONValue?, fallback: String?) -> String? {
@@ -301,7 +317,6 @@ private struct GeneratedParser {
     let isASCII: Bool
     private var pending: [PendingToken] = []
     private var keywordHits: [String:Int] = [:]
-    private var kindCache: [String:TokenKind] = [:]
     var relevance = 0
 
     init(source: String, caseInsensitive: Bool) {
@@ -314,7 +329,6 @@ private struct GeneratedParser {
         self.caseInsensitive = caseInsensitive
         isASCII = utf8Count == units.count
         pending.reserveCapacity(max(16, utf8Count / 12))
-        kindCache.reserveCapacity(32)
     }
 
     mutating func parseRoot(_ mode: GeneratedMode) {
@@ -402,7 +416,7 @@ private struct GeneratedParser {
         _ mode: GeneratedMode, from start: Int, limit: Int, ownsOpening: Bool
     ) -> Int {
         var cursor = start
-        let scope = mode.skip ? nil : mode.scope
+        let kind = mode.skip ? nil : mode.kind
         if ownsOpening { relevance += mode.relevance }
 
         while cursor < limit {
@@ -427,17 +441,17 @@ private struct GeneratedParser {
             #endif
 
             guard let event else {
-                emit(NSRange(location: cursor, length: limit-cursor), scope: scope, keywords: mode.keywords)
+                emit(NSRange(location: cursor, length: limit-cursor), kind: kind, keywords: mode.keywords)
                 return limit
             }
             if event.range.location > cursor {
                 emit(
                     NSRange(location: cursor, length: event.range.location-cursor),
-                    scope: scope, keywords: mode.keywords
+                    kind: kind, keywords: mode.keywords
                 )
             }
             if event.type == "illegal" {
-                append(scope: scope, range: event.range)
+                append(kind: kind, range: event.range)
                 cursor = event.range.length == 0
                     ? min(limit, nextScalarOffset(cursor))
                     : NSMaxRange(event.range)
@@ -445,17 +459,17 @@ private struct GeneratedParser {
             }
             if event.type == "end" {
                 if mode.returnEnd { return event.range.location }
-                if mode.excludeEnd { append(scope: nil, range: event.range) }
-                else { emitCaptures(event.range, regex: mode.end, scopes: mode.endScope, fallback: scope) }
+                if mode.excludeEnd { append(kind: nil, range: event.range) }
+                else { emitCaptures(event.range, regex: mode.end, scopes: mode.endScope, fallback: kind) }
                 return NSMaxRange(event.range)
             }
             guard let child = event.child else { return NSMaxRange(event.range) }
             if child.excludeBegin {
-                emit(event.range, scope: scope, keywords: mode.keywords)
+                emit(event.range, kind: kind, keywords: mode.keywords)
             } else {
                 emitCaptures(
                     event.range, regex: child.begin, scopes: child.beginScope,
-                    fallback: child.skip ? scope : child.scope
+                    fallback: child.skip ? kind : child.kind
                 )
             }
             cursor = parse(
@@ -555,12 +569,12 @@ private struct GeneratedParser {
     }
 
     private mutating func emit(
-        _ range: NSRange, scope: String?, keywords: [String:GeneratedKeyword]
+        _ range: NSRange, kind: TokenKind?, keywords: [String:GeneratedKeyword]
     ) {
         guard range.length > 0 else { return }
-        guard !keywords.isEmpty else { append(scope: scope, range: range); return }
+        guard !keywords.isEmpty else { append(kind: kind, range: range); return }
         if isASCII {
-            emitASCIIKeywords(range, scope: scope, keywords: keywords)
+            emitASCIIKeywords(range, kind: kind, keywords: keywords)
             return
         }
         var cursor = range.location
@@ -570,7 +584,7 @@ private struct GeneratedParser {
             guard let keyword = keywords[lookup] else { continue }
             if match.range.location > cursor {
                 append(
-                    scope: scope,
+                    kind: kind,
                     range: NSRange(location: cursor, length: match.range.location-cursor)
                 )
             }
@@ -578,18 +592,18 @@ private struct GeneratedParser {
             keywordHits[lookup] = count
             if count <= 7 { relevance += keyword.relevance }
             append(
-                scope: keyword.scope.hasPrefix("_") ? scope : keyword.scope,
+                kind: keyword.kind ?? kind,
                 range: match.range
             )
             cursor = NSMaxRange(match.range)
         }
         if cursor < NSMaxRange(range) {
-            append(scope: scope, range: NSRange(location: cursor, length:NSMaxRange(range)-cursor))
+            append(kind: kind, range: NSRange(location: cursor, length:NSMaxRange(range)-cursor))
         }
     }
 
     private mutating func emitASCIIKeywords(
-        _ range: NSRange, scope: String?, keywords: [String:GeneratedKeyword]
+        _ range: NSRange, kind: TokenKind?, keywords: [String:GeneratedKeyword]
     ) {
         let limit = NSMaxRange(range)
         var cursor = range.location
@@ -627,7 +641,7 @@ private struct GeneratedParser {
             }
             if search > cursor {
                 append(
-                    scope: scope,
+                    kind: kind,
                     range: NSRange(location: cursor, length: search - cursor)
                 )
             }
@@ -635,7 +649,7 @@ private struct GeneratedParser {
             keywordHits[lookup] = count
             if count <= 7 { relevance += keyword.relevance }
             append(
-                scope: keyword.scope.hasPrefix("_") ? scope : keyword.scope,
+                kind: keyword.kind ?? kind,
                 range: NSRange(location: search, length: end - search)
             )
             cursor = end
@@ -643,7 +657,7 @@ private struct GeneratedParser {
         }
         if cursor < limit {
             append(
-                scope: scope,
+                kind: kind,
                 range: NSRange(location: cursor, length: limit - cursor)
             )
         }
@@ -665,44 +679,31 @@ private struct GeneratedParser {
 
     private mutating func emitCaptures(
         _ range: NSRange, regex: NSRegularExpression?,
-        scopes: [Int:String], fallback: String?
+        scopes: [Int:TokenKind], fallback: TokenKind?
     ) {
-        if let whole = scopes[0] { append(scope: whole, range: range); return }
+        if let whole = scopes[0] { append(kind: whole, range: range); return }
         guard !scopes.isEmpty, let regex,
               let match = regex.firstMatch(in: source, options: [.anchored], range: range) else {
-            append(scope: fallback, range: range); return
+            append(kind: fallback, range: range); return
         }
         var cursor = range.location
         for index in scopes.keys.sorted() where index < match.numberOfRanges {
             let capture = match.range(at: index)
             guard capture.location != NSNotFound, capture.location >= cursor else { continue }
             if capture.location > cursor {
-                append(scope: fallback, range: NSRange(location: cursor,length:capture.location-cursor))
+                append(kind: fallback, range: NSRange(location: cursor,length:capture.location-cursor))
             }
-            append(scope: scopes[index], range: capture)
+            append(kind: scopes[index], range: capture)
             cursor = NSMaxRange(capture)
         }
         if cursor < NSMaxRange(range) {
-            append(scope: fallback, range: NSRange(location:cursor,length:NSMaxRange(range)-cursor))
+            append(kind: fallback, range: NSRange(location:cursor,length:NSMaxRange(range)-cursor))
         }
     }
 
-    private mutating func append(scope: String?, range: NSRange) {
+    private mutating func append(kind: TokenKind?, range: NSRange) {
         guard range.length > 0 else { return }
-        let kind: TokenKind
-        if let scope {
-            if let cached = kindCache[scope] {
-                kind = cached
-            } else {
-                let value = TokenKind(
-                    rawValue: scope.replacingOccurrences(of: ".", with: "-")
-                )
-                kindCache[scope] = value
-                kind = value
-            }
-        } else {
-            kind = .plain
-        }
+        let kind = kind ?? .plain
         if !pending.isEmpty, pending[pending.count-1].kind == kind,
            NSMaxRange(pending[pending.count-1].range) == range.location {
             pending[pending.count-1].range.length += range.length
