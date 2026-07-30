@@ -68,4 +68,7 @@ also creates a GitHub Release containing:
 - `NativeHighlight-Grammars-<version>.tar.gz`
 - `SHA256SUMS`
 
+For regular releases, update `VERSION` on `main`. The `Tag version` workflow
+creates the matching `v<version>` tag, which triggers release packaging.
+
 BSD 3-Clause licensed.
